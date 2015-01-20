@@ -4,6 +4,7 @@ include Java
 
 import javax.swing.JFrame
 import javax.swing.JPanel
+import javax.swing.Timer
 import java.awt.Color
 
 class Example < JFrame
@@ -14,26 +15,44 @@ class Example < JFrame
   end
 
   def initUI
+    @panel = MazePanel.new
+    self.getContentPane.add @panel
 
     self.setSize 500, 500
     self.setDefaultCloseOperation JFrame::EXIT_ON_CLOSE
     self.setLocationRelativeTo nil
     self.setVisible true
-    self.getContentPane.add MazePanel.new
+
+    @timer = Timer.new(0.05) do |e|
+      @panel.connect
+      @timer.restart unless @panel.endend?
+    end
+    @timer.start
   end
 end
 
 class MazePanel < JPanel
-  def initialize(maze_width = 50, maze_height = 50, margin = 5)
-    @margin = 5
-    @cell_margin = margin
-    @maze = Mazerb::Iterator::MazeBuilder.new(
-        maze_width, maze_height, Mazerb::Iterator::GrowingTree).build
+  def initialize(maze_width = 25, maze_height = 25)
+    @base_margin = 5
+    @maze = Mazerb::Maze.new(maze_width, maze_height)
+    @it = Mazerb::Iterator::GrowingTree.new(@maze)
+  end
+
+  def connect
+    if @it.has_next?
+      @it.next
+      @maze.link(@it.move.from, @it.move.direction)
+      self.repaint()
+    end
+  end
+
+  def endend?
+    !@it.has_next?
   end
 
   def paintComponent(g)
-    g.setColor(Color::BLACK);
-    g.drawRect(0, 0, width, height);
+    g.setColor(Color::BLACK)
+    g.drawRect(0, 0, width, height)
 
     g.setColor(Color::WHITE)
     (0...@maze.height).each do |y|
@@ -43,6 +62,9 @@ class MazePanel < JPanel
         paintWallDown(g,x,y) if @maze.linked?([x, y], Mazerb::Direction::DOWN)
       end
     end
+
+    g.setColor(Color::GREEN)
+    paintCell(g, *@it.move.to)
   end
 
   private
@@ -71,17 +93,33 @@ class MazePanel < JPanel
   end
 
   def cellWidth
-    (width - 2*@margin - @maze.width*@cell_margin) / @maze.width
+    @cell_width ||= ((width - 2*@base_margin) / (1.2 * @maze.width)).floor
   end
 
   def cellHeight
-    (height - 2*@margin - @maze.height*@cell_margin) / @maze.height
+    @cell_height ||=((height - 2*@base_margin)/ (1.2 * @maze.height)).floor
+  end
+
+  def cellUpperMargin
+    @cell_upper_margin ||= (0.2 * cellHeight).floor
+  end
+
+  def cellSideMargin
+    @cell_side_margin ||=(0.2 * cellWidth).floor
+  end
+
+  def sideMargin
+    ((width - @maze.width * (cellWidth + cellSideMargin))/2).floor
+  end
+
+  def upperMargin
+    ((height - @maze.height * (cellHeight + cellUpperMargin))/2).floor
   end
 
   def cellPosition(x, y)
     [
-        @margin + cellWidth * x + @cell_margin * x,
-        @margin + cellHeight* y + @cell_margin * y
+        sideMargin + x * (cellWidth + cellSideMargin),
+        upperMargin+ y * (cellHeight+ cellUpperMargin)
     ]
   end
 

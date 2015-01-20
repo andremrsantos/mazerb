@@ -7,9 +7,8 @@ require 'mazerb/data'
 class Mazerb::MazeBuilder < Struct.new(:width, :height, :iterator)
   def build
     maze = Mazerb::Maze.new(width, height)
-    it = iterator.new(maze).each do |_|
-      maze.link(it.move.from, it.move.direction)
-    end
+    it = iterator.new(maze)
+    it.each { |_| maze.link(it.move.from, it.move.direction) }
     maze
   end
 end
@@ -26,7 +25,7 @@ class Mazerb::Iterator::MazeIterator
 
   def reset
     @moves = @move_structure.new
-    @move  = build_move([0,0], Mazerb::Direction::DOWN)
+    @move  = build_move([0,-1], Mazerb::Direction::DOWN)
     @visited = {}
   end
 
